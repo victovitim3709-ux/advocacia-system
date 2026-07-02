@@ -32,7 +32,7 @@ const PATTERNS = {
     /(?:requerente|autor|parte[\s]requerente)[\s:]*([A-ZÁÉÍÓÚ][\w\s]+?)(?=CPF|CNPJ|requerido|endereço)/i,
   ],
   cpf: [
-    /(?:CPF|CPF/CNPJ)[\s:]*([\d]{3}\.[\d]{3}\.[\d]{3}-[\d]{2})/i,
+    /(?:CPF|CPF\/CNPJ)[\s:]*([\d]{3}\.[\d]{3}\.[\d]{3}-[\d]{2})/i,
     /([\d]{3}\.[\d]{3}\.[\d]{3}-[\d]{2})/i,
   ],
   defendantName: [
