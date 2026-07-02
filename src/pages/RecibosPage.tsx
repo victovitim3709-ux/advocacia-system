@@ -6,6 +6,7 @@ import { formatDateBR } from '@/utils/formatting';
 import { extractTextFromPDF, parsePDFData } from '@/utils/pdf-parser';
 import { toast } from 'sonner';
 import { Plus, Download, Trash2, FileText } from 'lucide-react';
+import { supabase } from '@/services/supabase';
 
 export const RecibosPage = () => {
   const { hasPermission, isAdmin } = useAuth();
@@ -42,6 +43,11 @@ export const RecibosPage = () => {
       return;
     }
 
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Máximo 10MB');
+      return;
+    }
+
     setUploading(true);
     try {
       const text = await extractTextFromPDF(file);
@@ -60,14 +66,39 @@ export const RecibosPage = () => {
     if (!selectedFile || !extractedData) return;
 
     try {
-      // Upload file and create recibo record
-      // Esta parte será implementada com o backend
+      setUploading(true);
+      
+      // Upload file to Supabase Storage
+      const fileName = `${Date.now()}-${selectedFile.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('recibos')
+        .upload(`uploads/${fileName}`, selectedFile);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('recibos')
+        .getPublicUrl(`uploads/${fileName}`);
+
+      // Create recibo record
+      await createMutation.mutateAsync({
+        nome: selectedFile.name,
+        data: extractedData.data_protocolo || new Date().toISOString(),
+        arquivo_path: urlData.publicUrl,
+        arquivo_nome: selectedFile.name,
+        n_processo: extractedData.n_processo,
+        dados_extraidos: extractedData,
+      });
+
       toast.success('Recibo salvo com sucesso!');
       setOpenReviewDialog(false);
       setSelectedFile(null);
       setExtractedData(null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao salvar recibo');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -262,7 +293,7 @@ export const RecibosPage = () => {
           <Button
             variant="default"
             onClick={handleSaveRecibo}
-            loading={createMutation.isPending}
+            loading={createMutation.isPending || uploading}
           >
             Salvar Recibo
           </Button>
